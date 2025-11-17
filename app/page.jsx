@@ -287,7 +287,7 @@ export default function LandingPage() {
               Ready to Transform Your Prompts?
             </h2>
             <p className="text-xl text-gray-300 mb-10">
-              Join thousands of users creating better AI prompts every day
+              Join thousands of  users creating better AI prompts every day
             </p>
             <motion.a
               href="/dashboard"
