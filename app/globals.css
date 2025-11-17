@@ -1,0 +1,380 @@
+/* ============================================
+   TAILWIND CSS v4 IMPORT
+   ============================================ */
+@import "tailwindcss";
+
+/* ============================================
+   TAILWIND v4 THEME (Design Tokens)
+   (Replaces tailwind.config.js and :root)
+   ============================================ */
+@theme {
+  /* 🎨 Accent Colors */
+  --color-accent-1: #4F46E5;
+  /* Deep Indigo */
+  --color-accent-2: #EC4899;
+  /* Warm Magenta */
+  --color-accent-3: #F59E0B;
+  /* Golden Amber */
+
+  /* 💎 Glassmorphism */
+  --color-glass-bg: rgba(255, 255, 255, 0.05);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+  --color-glass-hover: rgba(255, 255, 255, 0.08);
+  --backdrop-blur-glass: 20px;
+
+  /* 🌙 Dark Theme Colors */
+  --color-dark-50: #1E1B2E;
+  --color-dark-100: #16141F;
+  --color-dark-200: #0F0E15;
+
+  /* 🔤 Typography */
+  --font-display: 'Space Grotesk', 'Inter', sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  /* v4 uses 'sans' for body */
+
+  /* 📏 Spacing */
+  --spacing-xs: 0.5rem;
+  /* 8px */
+  --spacing-sm: 1rem;
+  /* 16px */
+  --spacing-md: 1.5rem;
+  /* 24px */
+  --spacing-lg: 2rem;
+  /* 32px */
+  --spacing-xl: 3rem;
+  /* 48px */
+  --spacing-2xl: 4rem;
+  /* 64px */
+
+  /* 🎭 Border Radius */
+  --radius-glass: 16px;
+  --radius-clay: 20px;
+
+  /* 📦 Shadows */
+  --shadow-clay: 6px 6px 12px rgba(0, 0, 0, 0.2), -6px -6px 12px rgba(255, 255, 255, 0.05);
+  --shadow-clay-inset: inset 4px 4px 8px rgba(0, 0, 0, 0.2), inset -4px -4px 8px rgba(255, 255, 255, 0.03);
+  --shadow-glow-indigo: 0 0 20px rgba(79, 70, 229, 0.4), 0 0 40px rgba(79, 70, 229, 0.2);
+
+  /* ⏱️ Animation Durations */
+  --duration-fast: 200ms;
+  --duration-normal: 400ms;
+  --duration-slow: 600ms;
+
+  /* 📈 Easing Functions */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* 🌌 Backgrounds (from body) */
+  --background-image-mesh-light:
+    radial-gradient(at 27% 37%, hsla(215, 98%, 61%, 0.12) 0px, transparent 50%),
+    radial-gradient(at 97% 21%, hsla(125, 98%, 72%, 0.08) 0px, transparent 50%),
+    radial-gradient(at 52% 99%, hsla(354, 98%, 61%, 0.12) 0px, transparent 50%),
+    radial-gradient(at 10% 29%, hsla(256, 96%, 67%, 0.12) 0px, transparent 50%);
+
+  /* 🌫️ Grain (from body::before) */
+  --background-image-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* ============================================
+   BASE STYLES LAYER
+   ============================================ */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    /* Use token */
+    font-size: 16px;
+    line-height: 1.6;
+    color: #E5E7EB;
+    background-color: var(--color-dark-200);
+    /* Use token */
+    background-image: var(--background-image-mesh-light);
+    /* Use token */
+    background-attachment: fixed;
+    background-size: cover;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* 🌫️ GRAIN OVERLAY (Subtle Noise Texture) */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.03;
+    background-image: var(--background-image-grain);
+    /* Use token */
+    background-repeat: repeat;
+    mix-blend-mode: overlay;
+  }
+
+  /* 🔤 TYPOGRAPHY */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+    /* Use token */
+    font-weight: 700;
+    line-height: 1.2;
+    color: #FFFFFF;
+  }
+
+  h1 {
+    font-size: clamp(2.5rem, 5vw, 5rem);
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-size: clamp(2rem, 4vw, 3.5rem);
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+  }
+
+  p {
+    color: #D1D5DB;
+    margin-bottom: 1rem;
+  }
+
+  a {
+    color: var(--color-accent-1);
+    /* Use token */
+    text-decoration: none;
+    transition: color var(--duration-fast) var(--ease-smooth);
+    /* Use tokens */
+  }
+
+  a:hover {
+    color: var(--color-accent-2);
+    /* Use token */
+  }
+
+  /* 📜 SCROLLBAR STYLING (Webkit) */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-dark-200);
+    /* Use token */
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--color-accent-1), var(--color-accent-2));
+    /* Use tokens */
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, var(--color-accent-2), var(--color-accent-3));
+    /* Use tokens */
+  }
+
+  /* 🎨 SELECTION HIGHLIGHT */
+  ::selection {
+    background-color: var(--color-accent-1);
+    /* Use token */
+    color: #FFFFFF;
+  }
+
+  ::-moz-selection {
+    background-color: var(--color-accent-1);
+    /* Use token */
+    color: #FFFFFF;
+  }
+
+  /* ♿ ACCESSIBILITY - FOCUS STATES */
+  *:focus-visible {
+    outline: 2px solid var(--color-accent-1);
+    /* Use token */
+    outline-offset: 2px;
+  }
+
+  button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--color-accent-2);
+    /* Use token */
+    outline-offset: 4px;
+  }
+}
+
+/* ============================================
+   COMPONENTS LAYER
+   ============================================ */
+@layer components {
+
+  /* 💎 GLASSMORPHISM UTILITY CLASS */
+  .glass {
+    background: var(--color-glass-bg);
+    /* Use token */
+    backdrop-filter: blur(var(--backdrop-blur-glass));
+    /* Use token */
+    -webkit-backdrop-filter: blur(var(--backdrop-blur-glass));
+    /* Use token */
+    border: 1px solid var(--color-glass-border);
+    /* Use token */
+    border-radius: var(--radius-glass);
+    /* Use token */
+  }
+
+  .glass:hover {
+    background: var(--color-glass-hover);
+    /* Use token */
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  /* 🧱 CLAY/NEUMORPHIC BUTTON */
+  .btn-clay {
+    background: linear-gradient(145deg, #1a1825, #14121c);
+    box-shadow: var(--shadow-clay);
+    /* Use token */
+    border-radius: var(--radius-clay);
+    /* Use token */
+    padding: 0.875rem 2rem;
+    font-weight: 600;
+    color: #FFFFFF;
+    border: none;
+    cursor: pointer;
+    transition: all var(--duration-normal) var(--ease-bounce);
+    /* Use tokens */
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-clay::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--color-accent-1), var(--color-accent-2));
+    /* Use tokens */
+    opacity: 0;
+    transition: opacity var(--duration-normal) var(--ease-smooth);
+    /* Use tokens */
+    z-index: -1;
+  }
+
+  .btn-clay:hover::before {
+    opacity: 0.15;
+  }
+
+  .btn-clay:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow-indigo);
+    /* Use token */
+  }
+
+  .btn-clay:active {
+    transform: translateY(0);
+  }
+
+  /* ⌨️ INSET NEUMORPHIC INPUT */
+  .input-inset {
+    background: var(--color-dark-100);
+    /* Use token */
+    box-shadow: var(--shadow-clay-inset);
+    /* Use token */
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 0.875rem 1rem;
+    color: #E5E7EB;
+    font-family: var(--font-sans);
+    /* Use token */
+    font-size: 1rem;
+    transition: all var(--duration-normal) var(--ease-smooth);
+    /* Use tokens */
+    outline: none;
+  }
+
+  .input-inset:focus {
+    border-color: var(--color-accent-1);
+    /* Use token */
+    box-shadow:
+      var(--shadow-clay-inset),
+      /* Use token */
+      0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+
+  .input-inset::placeholder {
+     color: #6B7280;
+  }
+
+  /* 🎬 UTILITY ANIMATIONS (for Framer Motion) */
+  .animate-on-scroll {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .animate-on-scroll.visible {
+    opacity: 1;
+    transform: translateY(0);
+    transition: all 0.6s var(--ease-smooth);
+    /* Use token */
+  }
+}
+
+/* ============================================
+   GLOBAL MEDIA QUERIES (remain at end)
+   ============================================ */
+
+/* ♿ REDUCED MOTION (Accessibility) */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* 📱 RESPONSIVE TYPOGRAPHY */
+@media (max-width: 768px) {
+  @layer base {
+    body {
+      font-size: 14px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+    }
+
+    h2 {
+      font-size: 2rem;
+    }
+
+    h3 {
+      font-size: 1.5rem;
+    }
+  }
+}
