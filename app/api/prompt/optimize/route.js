@@ -1,129 +1,151 @@
-import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import dbConnect from '@/lib/db';
-import PromptImproviser from '@/lib/service/PromptImpro';
-import Prompt from '@/lib/models/Prompt';
-
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import dbConnect from "@/lib/db";
+import PromptImproviser from "@/lib/service/PromptImpro";
+import Prompt from "@/lib/models/Prompt";
+import Project from "@/lib/models/Project";
+import { Tag } from "lucide-react";
 
 export async function POST(request) {
   await dbConnect();
+
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const body = await request.json();
     const { prompt, profession, style, projectId, context } = body;
 
-    // 1. Validation
     if (!process.env.GEMINI_API_KEY) {
-        console.log('GEMINI_API_KEY is missing in environment variables');
-      return NextResponse.json({ 
-        success: false, 
-        error: 'GEMINI_API_KEY is missing in .env file' 
-      }, { status: 500 });
+      return NextResponse.json(
+        { error: "Server configuration error (API Key)" },
+        { status: 500 }
+      );
     }
 
     if (!prompt) {
-      return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: "Prompt is required" },
+        { status: 400 }
+      );
     }
 
-    console.log(`Optimizing prompt for profession: ${profession}, style: ${style}` , context, projectId);
-    console.log("Original Prompt:", prompt);
-    // 2. Context Awareness ("Project Memory")
+    // 1. Context Awareness ("Project Memory")
     let projectContext = "";
     if (projectId) {
       try {
-        // Fetch last 3 prompts from this project to understand the user's style
-        const recentPrompts = await Prompt.find({ projectId })
-          .sort({ createdAt: -1 })
-          .limit(3)
-          .select('optimizedPrompt');
-        
-        if (recentPrompts.length > 0) {
-          projectContext = `
-CONTEXT FROM PREVIOUS PROJECT WORK:
-The user is working in a project where they have already generated the following prompts. 
-Use these as a reference for the desired tone, complexity, and structure, but prioritize the specific instructions for the NEW request.
-${recentPrompts.map((p, i) => `Example ${i+1}: ${p.optimizedPrompt.substring(0, 300)}...`).join('\n')}
-`;
+        // 🔒 Security: Ensure user owns this project before reading its context
+        const project = await Project.findOne({
+          _id: projectId,
+          userId: session.user.id,
+        });
+
+        if (project) {
+          const recentPrompts = await Prompt.find({ projectId })
+            .sort({ createdAt: -1 })
+            .limit(3)
+            .select("optimizedPrompt");
+
+          if (recentPrompts.length > 0) {
+            projectContext = `
+  CONTEXT FROM PREVIOUS PROJECT WORK:
+  The user is working in a project where they have already generated the following prompts. 
+  Use these as a reference for the desired tone, complexity, and structure.
+  ${recentPrompts
+    .map(
+      (p, i) => `Example ${i + 1}: ${p.optimizedPrompt.substring(0, 300)}...`
+    )
+    .join("\n")}
+  `;
+          }
         }
       } catch (err) {
-        console.warn("Failed to fetch project context", err);
-        // Fail silently on context fetch so we can still optimize the main prompt
+        console.warn("Context fetch warning:", err);
       }
     }
 
-    // 3. Construct the System Prompt for Gemini
+    // 2. System Prompt Construction
     const systemInstruction = `
     You are an elite Prompt Engineer and AI Optimization Assistant.
-    Your goal is to rewrite the user's raw prompt into a highly effective, professional prompt optimized for LLMs (like GPT-4, Claude, Gemini).
+    Your goal is to rewrite the user's raw prompt into a highly effective, professional prompt optimized for LLMs.
 
     ---
     TARGET AUDIENCE/ROLE: ${profession}
-    FRAMEWORK TO USE: ${style.toUpperCase()}
+    FRAMEWORK: ${style.toUpperCase()}
     ---
 
     FRAMEWORK DEFINITIONS:
-    - WALT: Who (Persona), Action (Task), Limitation (Constraints), Tone (Style).
+    - WALT: Who, Action, Limitation, Tone.
     - RACE: Role, Action, Context, Expectation.
     - CCE: Context, Constraint, Example.
-    - CUSTOM: Use general best practices for the ${profession} profession.
+    - CUSTOM: General best practices.
 
-    USER REQUIREMENTS:
-    ${context?.examples ? "- Must include specific examples in the prompt." : ""}
-    ${context?.constraints ? "- Must define clear constraints (length, format, etc)." : ""}
-    ${context?.tone ? "- Must explicitly define the communication tone." : ""}
-    ${context?.format ? "- Must specify the output format (markdown, code, list, etc)." : ""}
+    REQUIREMENTS:
+    ${context?.examples ? "- Include specific examples." : ""}
+    ${context?.constraints ? "- Define clear constraints." : ""}
+    ${context?.tone ? "- Explicitly define tone." : ""}
+    ${context?.format ? "- Specify output format." : ""}
 
     ${projectContext}
 
     INSTRUCTIONS:
-    1. Analyze the user's raw prompt.
-    2. Expand it using the selected ${style} framework.
-    3. Enhance it with profession-specific keywords.
-    4. Return ONLY the optimized prompt text. Do not include introductions like "Here is your prompt".
+    Return ONLY the optimized prompt text. No intro/outro.
+    Give title in 50 characters or less in first line.
+    and give tags in last line like this in this format: [#tag1, #tag2, #tag3]
     `;
 
-    // 4. Call Gemini API
-    // const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    
-    // const result = await model.generateContent([
-    //     systemInstruction, 
-    //     `RAW PROMPT: "${prompt}"`
-    // ]);
- 
+    const optimizedResult = await PromptImproviser({
+      prompt,
+      systemInstruction,
+    });
+    // console.log("Optimized Result:", optimizedResult);
 
+    const lines = optimizedResult.split("\n");
+    const title = lines[0];
+    const tagsLine = optimizedResult.match(/#\w+/g);
+    const optimizedPromptBody = lines
+      .slice(1, -1) // remove first and last line
+      .filter((line) => !line.startsWith("[")) // exclude tag lines
+      .join("\n"); // join back into a string
 
+    // 3. Usage Stats
+    const tokens = Math.ceil(
+      (systemInstruction.length + prompt.length + optimizedResult.length) / 4
+    );
+    const costUsd = tokens * 0.0000005; // Simplified calc
 
-
-
-    const optimizedResult = await PromptImproviser({prompt,systemInstruction});
-
-    // 5. Calculate Usage Stats (Estimates for Gemini 1.5 Flash)
-    const inputLength = systemInstruction.length + prompt.length;
-    const outputLength = optimizedResult.length;
-    
-    // Rough token estimate (1 token ~= 4 chars)
-    const tokens = Math.ceil((inputLength + outputLength) / 4);
-    
-    // Pricing (approximate based on current Gemini Flash rates)
-    // ~$0.00001875/1k chars input, ~$0.000075/1k chars output
-    const costUsd = (inputLength * 0.000000018) + (outputLength * 0.000000075); 
+    // save in database
+    const newPrompt = await Prompt.create({
+      title: title || "Untitled Prompt",
+      originalPrompt: prompt,
+      optimizedPrompt: `[${style.toUpperCase()}] ` + optimizedPromptBody.trim(),
+      snippet: optimizedPromptBody.substring(0, 150) + "...",
+      profession,
+      style,
+      tags: tagsLine || [],
+      projectId,
+      userId: session.user.id,
+    });
 
     return NextResponse.json({
       success: true,
       original: prompt,
       optimized: optimizedResult.trim(),
       tokensUsed: tokens,
-      costUsd: parseFloat(costUsd.toFixed(8)), // High precision for micro-costs
+      costUsd: parseFloat(costUsd.toFixed(8)),
       timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
-    console.error("Gemini Optimization Error:", error);
-    return NextResponse.json({ 
-        success: false, 
-        error: error.message || 'Failed to optimize prompt' 
-    }, { status: 500 });
+    console.error("Optimization Error:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "Failed to optimize prompt",
+      },
+      { status: 500 }
+    );
   }
 }

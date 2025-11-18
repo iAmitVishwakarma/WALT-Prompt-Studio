@@ -1,82 +1,59 @@
-// app/(app)/dashboard/page.jsx
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useProject } from '@/components/providers/ProjectProvider'; // Hook
 import Composer from '@/components/Composer';
-import VaultCard from '@/components/VaultCard';
-import { fadeUp, staggerContainer, staggerItem, scaleIn } from '@/components/motion/variants';
+import VaultCard from '@/components/vault/VaultCard';
+import { fadeUp, scaleIn } from '@/components/motion/variants';
 
 export default function DashboardPage() {
-  const [projects, setProjects] = useState([]);
-  const [selectedProjectId, setSelectedProjectId] = useState(null);
+  // Use Global Context
+  const { projects, activeProject, switchProject, createProject, isLoading } = useProject();
+  
   const [projectPrompts, setProjectPrompts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [promptsLoading, setPromptsLoading] = useState(false);
   
   // UI States
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
 
-  // Fetch Projects
+  // Fetch Prompts only when activeProject changes
   useEffect(() => {
-    fetchProjects();
-  }, []);
-
-  // Fetch Prompts when Project changes
-  useEffect(() => {
-    if (selectedProjectId) {
-      fetchPrompts(selectedProjectId);
+    if (activeProject) {
+      fetchPrompts(activeProject._id);
     } else {
       setProjectPrompts([]);
     }
-  }, [selectedProjectId]);
-
-  async function fetchProjects() {
-    try {
-      const res = await fetch('/api/projects');
-      const data = await res.json();
-      setProjects(data);
-      // Default to first project if none selected
-      if (data.length > 0 && !selectedProjectId) {
-        setSelectedProjectId(data[0]._id);
-      }
-    } catch (err) {
-      console.error('Failed to load projects', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  }, [activeProject]);
 
   async function fetchPrompts(projectId) {
+    setPromptsLoading(true);
     try {
       const res = await fetch(`/api/vault?projectId=${projectId}`);
       const data = await res.json();
-      setProjectPrompts(data);
+      if (Array.isArray(data)) {
+        setProjectPrompts(data);
+      }
     } catch (err) {
       console.error('Failed to load prompts', err);
+    } finally {
+      setPromptsLoading(false);
     }
   }
 
-  async function createProject() {
+  async function handleCreateProject() {
     if (!newProjectName.trim()) return;
-    try {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newProjectName, description: 'New workspace' }),
-      });
-      const project = await res.json();
-      setProjects([project, ...projects]);
-      setSelectedProjectId(project._id);
+    const success = await createProject(newProjectName);
+    if (success) {
       setNewProjectName('');
       setIsCreatingProject(false);
-    } catch (err) {
-      alert('Error creating project');
+      setIsProjectMenuOpen(false);
     }
   }
 
-  const activeProject = projects.find(p => p._id === selectedProjectId);
+  if (isLoading) return <div className="min-h-screen pt-32 text-center">Loading Workspace...</div>;
 
   return (
     <div className="min-h-screen pt-28 pb-16 bg-dark-200">
@@ -96,13 +73,13 @@ export default function DashboardPage() {
               Active Workspace
             </h2>
             
-            {/* Custom Project Selector */}
+            {/* Project Selector */}
             <div className="relative">
               <button 
                 onClick={() => setIsProjectMenuOpen(!isProjectMenuOpen)}
                 className="flex items-center space-x-3 text-3xl font-display font-bold text-white hover:text-gray-200 transition-colors group"
               >
-                <span>{activeProject?.name || 'Select Project'}</span>
+                <span>{activeProject?.name || 'Create a Project'}</span>
                 <motion.span 
                   animate={{ rotate: isProjectMenuOpen ? 180 : 0 }}
                   className="text-gray-500 group-hover:text-accent-1 transition-colors text-xl"
@@ -129,22 +106,21 @@ export default function DashboardPage() {
                           <button
                             key={p._id}
                             onClick={() => {
-                              setSelectedProjectId(p._id);
+                              switchProject(p._id);
                               setIsProjectMenuOpen(false);
                             }}
                             className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between ${
-                              selectedProjectId === p._id 
+                              activeProject?._id === p._id 
                                 ? 'bg-accent-1/10 text-accent-1' 
                                 : 'text-gray-300 hover:bg-white/5'
                             }`}
                           >
                             <span className="truncate">{p.name}</span>
-                            {selectedProjectId === p._id && <span>✓</span>}
+                            {activeProject?._id === p._id && <span>✓</span>}
                           </button>
                         ))}
                       </div>
                       
-                      {/* New Project Button inside Dropdown */}
                       <div className="border-t border-white/10 mt-2 pt-2">
                         <button
                           onClick={() => {
@@ -164,7 +140,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Quick Stats or Actions */}
+          {/* Quick Stats */}
           <div className="flex items-center space-x-4">
             <div className="px-4 py-2 rounded-full bg-dark-100 border border-white/5 text-sm text-gray-400">
               <span className="text-white font-bold">{projectPrompts.length}</span> Prompts
@@ -173,7 +149,7 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* ============================================
-            CREATE PROJECT MODAL (Overlay)
+            CREATE PROJECT MODAL
             ============================================ */}
         <AnimatePresence>
           {isCreatingProject && (
@@ -188,7 +164,7 @@ export default function DashboardPage() {
                 initial="hidden"
                 animate="visible"
                 exit="hidden"
-                className="bg-dark-100 border border-glass-border rounded-2xl p-8 w-full max-w-md shadow-2xl"
+                className="bg-dark-100 border border-glass-border rounded-2xl p-8  shadow-2xl"
               >
                 <h3 className="font-display text-2xl font-bold text-white mb-2">Create New Workspace</h3>
                 <p className="text-gray-400 mb-6">Give your new project a name to get started.</p>
@@ -200,7 +176,7 @@ export default function DashboardPage() {
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
                   className="w-full bg-dark-200 border border-white/10 rounded-xl px-4 py-3 text-white mb-6 focus:outline-none focus:border-accent-1 transition-colors"
-                  onKeyDown={(e) => e.key === 'Enter' && createProject()}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
                 />
                 
                 <div className="flex gap-3">
@@ -211,7 +187,7 @@ export default function DashboardPage() {
                     Cancel
                   </button>
                   <button
-                    onClick={createProject}
+                    onClick={handleCreateProject}
                     className="flex-1 btn-clay rounded-xl"
                   >
                     Create Project
@@ -223,42 +199,49 @@ export default function DashboardPage() {
         </AnimatePresence>
 
         {/* ============================================
-            MAIN GRID LAYOUT
+            MAIN GRID
             ============================================ */}
         <div className="grid lg:grid-cols-3 gap-8 items-start">
           
-          {/* LEFT COLUMN: Composer */}
+          {/* LEFT: Composer */}
           <div className="lg:col-span-2">
             <motion.div variants={fadeUp} initial="hidden" animate="visible" transition={{ delay: 0.1 }}>
               <div className="glass rounded-glass p-1 border-t border-white/10 shadow-xl">
                 <div className="bg-dark-200/50 rounded-[14px] p-6 lg:p-8">
-                  <Composer 
-                    projectId={selectedProjectId} 
-                    onSave={() => fetchPrompts(selectedProjectId)} 
-                  />
+                  {activeProject ? (
+                    <Composer 
+                      projectId={activeProject._id} 
+                      onSave={() => fetchPrompts(activeProject._id)} 
+                    />
+                  ) : (
+                    <div className="text-center py-10 text-gray-400">
+                      Please create or select a project to start composing.
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
           </div>
 
-          {/* RIGHT COLUMN: Recent Vault Items */}
+          {/* RIGHT: Recent Vault */}
           <div className="lg:col-span-1">
             <motion.div variants={fadeUp} initial="hidden" animate="visible" transition={{ delay: 0.2 }}>
               <div className="flex items-center justify-between mb-6">
                 <h3 className="font-display text-xl font-bold text-white">
                   Recent Saves
                 </h3>
-                <button className="text-xs text-accent-1 hover:text-accent-2 transition-colors">
+                <a href="/vault" className="text-xs text-accent-1 hover:text-accent-2 transition-colors">
                   View All
-                </button>
+                </a>
               </div>
 
               <div className="space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
-                {projectPrompts.length === 0 ? (
+                {promptsLoading ? (
+                   <div className="text-gray-500 text-sm text-center">Loading...</div>
+                ) : projectPrompts.length === 0 ? (
                   <div className="text-center py-10 px-6 rounded-xl border border-dashed border-white/10">
                     <span className="text-4xl block mb-3">📂</span>
                     <p className="text-gray-500 text-sm">Your vault is empty.</p>
-                    <p className="text-gray-600 text-xs mt-1">Create your first optimization!</p>
                   </div>
                 ) : (
                   projectPrompts.map((prompt) => (

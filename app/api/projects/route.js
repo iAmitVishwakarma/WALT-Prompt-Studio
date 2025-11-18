@@ -1,16 +1,22 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Import your auth config
 import dbConnect from '@/lib/db';
 import Project from '@/lib/models/Project';
 
-// 1. GET: List all projects
+// 1. GET: List MY projects
 export async function GET(request) {
   await dbConnect();
+  
+  // 🔒 Security Check
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   try {
-    const MOCK_USER_ID = "user_123_mock"; 
-
-    // Find all projects for this user, newest first
-    const projects = await Project.find({ userId: MOCK_USER_ID })
+    // Only find projects belonging to THIS user
+    const projects = await Project.find({ userId: session.user.id })
       .sort({ updatedAt: -1 });
 
     return NextResponse.json(projects);
@@ -20,18 +26,23 @@ export async function GET(request) {
   }
 }
 
-// 2. POST: Create a new project
+// 2. POST: Create a new project for ME
 export async function POST(request) {
   await dbConnect();
 
+  // 🔒 Security Check
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
-    const MOCK_USER_ID = "user_123_mock";
 
     const project = await Project.create({
       name: body.name,
       description: body.description,
-      userId: MOCK_USER_ID,
+      userId: session.user.id, // Attach to real user
     });
 
     return NextResponse.json(project, { status: 201 });

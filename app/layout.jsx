@@ -1,6 +1,8 @@
 import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import AuthProvider from '@/components/providers/AuthProvider';
+import {ProjectProvider} from '@/components/providers/ProjectProvider';
 
 // ============================================
 // FONT CONFIGURATIONS
@@ -108,10 +110,14 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <body className="font-sans antialiased">
+        <AuthProvider>
+        <ProjectProvider>
         <Navbar />
         <main className="relative">
           {children}
         </main>
+        </ProjectProvider>
+        </AuthProvider>
       </body>
     </html>
   );

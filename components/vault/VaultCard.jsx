@@ -16,7 +16,7 @@
 
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { lift } from './motion/variants';
+import { lift } from '../motion/variants';
 
 export default function VaultCard({ 
   id,

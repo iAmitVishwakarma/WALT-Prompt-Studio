@@ -17,7 +17,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import VaultCard from './VaultCard';
-import { staggerContainer, staggerItem, fadeUp } from './motion/variants';
+import { staggerContainer, staggerItem, fadeUp } from '../motion/variants';
 
 // ============================================
 // FILTER OPTIONS

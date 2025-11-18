@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fadeUp, scaleIn, lift } from './motion/variants';
+import { fadeUp, scaleIn, lift } from '../motion/variants';
 
 
 
