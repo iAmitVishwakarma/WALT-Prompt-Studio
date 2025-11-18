@@ -1,27 +1,9 @@
 'use client';
-
-/**
- * ============================================
- * PROMPT COMPOSER COMPONENT
- * ============================================
- * 
- * Features:
- * - Profession picker (dropdown)
- * - Style framework chips (WALT, RACE, CCE, Custom)
- * - Prompt editor (textarea with token estimate)
- * - Context toggles (Add examples, Include constraints, etc.)
- * - Run button (calls optimization API)
- * - Results panel (shows optimized prompt, tokens, cost)
- * - Save to vault button
- */
-
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fadeUp, scaleIn, lift } from './motion/variants';
 
-// ============================================
-// PROFESSIONS & STYLES DATA
-// ============================================
+
 
 const PROFESSIONS = [
   { id: 'developer', label: 'Developer', icon: '💻' },
@@ -67,11 +49,9 @@ const CONTEXT_TOGGLES = [
   { id: 'format', label: 'Output Format', description: 'Define structure' },
 ];
 
-// ============================================
-// MAIN COMPOSER COMPONENT
-// ============================================
 
-export default function Composer({ compact = false }) {
+
+export default function Composer({ compact = false, projectId, onSave }) {
   const [profession, setProfession] = useState('developer');
   const [style, setStyle] = useState('walt');
   const [prompt, setPrompt] = useState('');
@@ -93,12 +73,9 @@ export default function Composer({ compact = false }) {
   };
 
   // Handle optimization
-  const handleOptimize = async () => {
+const handleOptimize = async () => {
     if (!prompt.trim()) return;
-
     setIsOptimizing(true);
-    setResult(null);
-
     try {
       const response = await fetch('/api/prompt/optimize', {
         method: 'POST',
@@ -108,17 +85,11 @@ export default function Composer({ compact = false }) {
           profession,
           style,
           context: contextToggles,
+          projectId // Send Project ID for context memory
         }),
       });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        setResult(data);
-      } else {
-        alert('Optimization failed. Please try again.');
-      }
-    } catch (error) {
+    
+}catch (error) {
       console.error('Optimization error:', error);
       alert('Network error. Please check your connection.');
     } finally {
@@ -127,34 +98,39 @@ export default function Composer({ compact = false }) {
   };
 
   // Handle save to vault
-  const handleSaveToVault = async () => {
+const handleSaveToVault = async () => {
     if (!result) return;
+    
+    // Validation: Ensure a project is selected
+    if (!projectId) {
+      alert("Please select or create a project first!");
+      return;
+    }
 
     try {
       const response = await fetch('/api/vault', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: `${PROFESSIONS.find(p => p.id === profession)?.label} Prompt - ${new Date().toLocaleDateString()}`,
+          title: `${PROFESSIONS.find(p => p.id === profession)?.label} Prompt`,
           originalPrompt: result.original,
           optimizedPrompt: result.optimized,
           profession,
           style,
           tags: [profession, style],
+          projectId // Attach to Project
         }),
       });
 
       const data = await response.json();
-      
       if (data.success) {
         alert('✅ Saved to Vault!');
+        if (onSave) onSave(); // Trigger refresh in parent
       }
     } catch (error) {
       console.error('Save error:', error);
-      alert('Failed to save. Please try again.');
     }
   };
-
   return (
     <div className={`${compact ? 'space-y-4' : 'space-y-6'}`}>
       

@@ -1,16 +1,3 @@
-/**
- * ============================================
- * ROOT LAYOUT
- * ============================================
- * 
- * Features:
- * - Global metadata (SEO)
- * - Font imports (Inter, Space Grotesk)
- * - Global CSS imports
- * - Navbar component
- * - Analytics placeholder
- */
-
 import { Inter, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 import Navbar from '@/components/Navbar';
@@ -19,7 +6,6 @@ import Navbar from '@/components/Navbar';
 // FONT CONFIGURATIONS
 // ============================================
 
-// Inter - Body font
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
@@ -27,13 +13,23 @@ const inter = Inter({
   weight: ['300', '400', '500', '600', '700'],
 });
 
-// Space Grotesk - Display font (headlines)
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
   variable: '--font-space-grotesk',
   display: 'swap',
   weight: ['400', '500', '600', '700'],
 });
+
+// ============================================
+// VIEWPORT CONFIG (New Standard)
+// ============================================
+
+export const viewport = {
+  themeColor: '#4F46E5',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+};
 
 // ============================================
 // METADATA (SEO)
@@ -59,7 +55,6 @@ export const metadata = {
   creator: 'WALT Studio',
   publisher: 'WALT Studio',
   
-  // Open Graph (social media previews)
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -70,7 +65,7 @@ export const metadata = {
     siteName: 'WALT Prompt Studio',
     images: [
       {
-        url: '/og-image.png', // TODO: Create OG image (1200x630px)
+        url: '/og-image.png', 
         width: 1200,
         height: 630,
         alt: 'WALT Prompt Studio',
@@ -78,16 +73,14 @@ export const metadata = {
     ],
   },
   
-  // Twitter Card
   twitter: {
     card: 'summary_large_image',
     title: 'WALT Prompt Studio',
     description: 'AI-powered prompt optimizer and vault',
-    creator: '@waltstudio', // TODO: Replace with actual Twitter handle
+    creator: '@waltstudio', 
     images: ['/og-image.png'],
   },
   
-  // Additional metadata
   robots: {
     index: true,
     follow: true,
@@ -100,29 +93,10 @@ export const metadata = {
     },
   },
   
-  // Verification (add when ready)
-  // verification: {
-  //   google: 'your-google-site-verification-code',
-  // },
-  
-  // Manifest for PWA (optional for v2)
-  // manifest: '/manifest.json',
-  
-  // Icons
   icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon-16x16.png',
     apple: '/apple-touch-icon.png',
-  },
-  
-  // Theme color (appears in mobile browser chrome)
-  themeColor: '#4F46E5',
-  
-  // Viewport (responsive)
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 5,
   },
 };
 
@@ -133,31 +107,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
-      <head>
-        {/* Additional head elements can go here */}
-        {/* Example: Analytics script, Fonts preload, etc. */}
-      </head>
-      
       <body className="font-sans antialiased">
-        {/* Global Navbar */}
         <Navbar />
-        
-        {/* Main content area */}
         <main className="relative">
           {children}
         </main>
-        
-        {/* Global Footer (optional - can be added later) */}
-        {/* <Footer /> */}
-        
-        {/* Analytics Script Placeholder */}
-        {/* TODO: Add Google Analytics, Plausible, or Vercel Analytics */}
-        {/* Example:
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"
-          strategy="afterInteractive"
-        />
-        */}
       </body>
     </html>
   );

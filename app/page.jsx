@@ -34,12 +34,12 @@ export default function LandingPage() {
   const heroOpacity = useTransform(scrollY, [0, 300], [1, 0]);
 
   return (
-    <div className="min-h-screen">
+    <div  className="min-h-screen">
       
       {/* ============================================
           HERO SECTION
           ============================================ */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      <section id='home' className="relative min-h-screen flex items-center justify-center overflow-hidden">
         
         {/* Parallax Aurora Background */}
         <motion.div
