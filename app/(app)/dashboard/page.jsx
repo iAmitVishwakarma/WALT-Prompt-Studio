@@ -1,268 +1,367 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useProject } from '@/components/providers/ProjectProvider'; // Hook
-import Composer from '@/components/Composer';
+import Link from 'next/link'; // ✅ FIX 1: Import Link
+import { motion } from 'framer-motion';
+import Composer from '@/components/prompt/Composer';
 import VaultCard from '@/components/vault/VaultCard';
-import { fadeUp, scaleIn } from '@/components/motion/variants';
+import { useProject } from '@/components/providers/ProjectProvider'; // ✅ FIX 2: Connect to Global State
+import { fadeUp, staggerContainer, staggerItem, revealOnScroll, viewportOptions } from '@/components/motion/variants';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
-  // Use Global Context
-  const { projects, activeProject, switchProject, createProject, isLoading } = useProject();
+  const router = useRouter();
+  // Use the global project data we already have!
+  const { activeProject, projects } = useProject();
   
-  const [projectPrompts, setProjectPrompts] = useState([]);
-  const [promptsLoading, setPromptsLoading] = useState(false);
-  
-  // UI States
-  const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
-  const [isCreatingProject, setIsCreatingProject] = useState(false);
-  const [newProjectName, setNewProjectName] = useState('');
+  const [recentPrompts, setRecentPrompts] = useState([]);
+  const [isLoadingPrompts, setIsLoadingPrompts] = useState(true);
+  const [stats, setStats] = useState({
+    totalPrompts: 0,
+    tokensSaved: 0,
+    optimizationsToday: 0,
+  });
 
-  // Fetch Prompts only when activeProject changes
+  // Fetch data based on ACTIVE PROJECT
   useEffect(() => {
-    if (activeProject) {
-      fetchPrompts(activeProject._id);
-    } else {
-      setProjectPrompts([]);
-    }
-  }, [activeProject]);
-
-  async function fetchPrompts(projectId) {
-    setPromptsLoading(true);
-    try {
-      const res = await fetch(`/api/vault?projectId=${projectId}`);
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setProjectPrompts(data);
+    async function fetchDashboardData() {
+      if (!activeProject) {
+        setIsLoadingPrompts(false);
+        return;
       }
-    } catch (err) {
-      console.error('Failed to load prompts', err);
-    } finally {
-      setPromptsLoading(false);
-    }
-  }
 
-  async function handleCreateProject() {
-    if (!newProjectName.trim()) return;
-    const success = await createProject(newProjectName);
-    if (success) {
-      setNewProjectName('');
-      setIsCreatingProject(false);
-      setIsProjectMenuOpen(false);
-    }
-  }
+      setIsLoadingPrompts(true);
+      try {
+        // Fetch prompts for the specific project
+        const response = await fetch(`/api/vault?projectId=${activeProject._id}`);
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+          // Get latest 3 prompts
+          setRecentPrompts(data.slice(0, 3));
 
-  if (isLoading) return <div className="min-h-screen pt-32 text-center">Loading Workspace...</div>;
+          // Calculate stats dynamically
+          setStats({
+            totalPrompts: data.length,
+            // Mock calculation for tokens saved based on prompt length
+            tokensSaved: data.reduce((sum, p) => sum + Math.ceil((p.optimizedPrompt?.length || 0) / 4), 0),
+            optimizationsToday: data.filter(p => {
+              const today = new Date().toDateString();
+              const promptDate = new Date(p.createdAt).toDateString();
+              return today === promptDate;
+            }).length,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch prompts:', error);
+      } finally {
+        setIsLoadingPrompts(false);
+      }
+    }
+
+    fetchDashboardData();
+  }, [activeProject]); // Re-run when project switches
+
+  const handleViewPrompt = (id) => {
+    router.push(`/vault/${id}`);
+  };
 
   return (
-    <div className="min-h-screen pt-28 pb-16 bg-dark-200">
+    <div className="min-h-screen pt-24 pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* ============================================
-            WORKSPACE HEADER
+            WELCOME HEADER
             ============================================ */}
-        <motion.div 
+        <motion.div
           variants={fadeUp}
           initial="hidden"
           animate="visible"
-          className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6"
+          className="mb-12"
         >
-          <div>
-            <h2 className="text-sm font-semibold text-accent-1 tracking-wider uppercase mb-2">
-              Active Workspace
-            </h2>
-            
-            {/* Project Selector */}
-            <div className="relative">
-              <button 
-                onClick={() => setIsProjectMenuOpen(!isProjectMenuOpen)}
-                className="flex items-center space-x-3 text-3xl font-display font-bold text-white hover:text-gray-200 transition-colors group"
-              >
-                <span>{activeProject?.name || 'Create a Project'}</span>
-                <motion.span 
-                  animate={{ rotate: isProjectMenuOpen ? 180 : 0 }}
-                  className="text-gray-500 group-hover:text-accent-1 transition-colors text-xl"
-                >
-                  ▼
-                </motion.span>
-              </button>
-
-              {/* Dropdown Menu */}
-              <AnimatePresence>
-                {isProjectMenuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    className="absolute top-full left-0 mt-4 w-72 bg-dark-100 border border-glass-border rounded-xl shadow-2xl z-50 overflow-hidden"
-                  >
-                    <div className="p-2">
-                      <div className="text-xs font-semibold text-gray-500 px-3 py-2 uppercase">
-                        Switch Project
-                      </div>
-                      <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                        {projects.map(p => (
-                          <button
-                            key={p._id}
-                            onClick={() => {
-                              switchProject(p._id);
-                              setIsProjectMenuOpen(false);
-                            }}
-                            className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between ${
-                              activeProject?._id === p._id 
-                                ? 'bg-accent-1/10 text-accent-1' 
-                                : 'text-gray-300 hover:bg-white/5'
-                            }`}
-                          >
-                            <span className="truncate">{p.name}</span>
-                            {activeProject?._id === p._id && <span>✓</span>}
-                          </button>
-                        ))}
-                      </div>
-                      
-                      <div className="border-t border-white/10 mt-2 pt-2">
-                        <button
-                          onClick={() => {
-                            setIsProjectMenuOpen(false);
-                            setIsCreatingProject(true);
-                          }}
-                          className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-                        >
-                          <span className="text-lg">+</span>
-                          <span>Create New Project</span>
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="flex items-center space-x-4">
-            <div className="px-4 py-2 rounded-full bg-dark-100 border border-white/5 text-sm text-gray-400">
-              <span className="text-white font-bold">{projectPrompts.length}</span> Prompts
-            </div>
-          </div>
+          <h1 className="font-display text-display-md font-bold text-white mb-2">
+            Welcome back! 👋
+          </h1>
+          <p className="text-xl text-gray-300">
+         Ready to create some amazing prompts today?
+          </p>
         </motion.div>
 
         {/* ============================================
-            CREATE PROJECT MODAL
+            STATS CARDS
             ============================================ */}
-        <AnimatePresence>
-          {isCreatingProject && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            >
-              <motion.div
-                variants={scaleIn}
-                initial="hidden"
-                animate="visible"
-                exit="hidden"
-                className="bg-dark-100 border border-glass-border rounded-2xl p-8  shadow-2xl"
-              >
-                <h3 className="font-display text-2xl font-bold text-white mb-2">Create New Workspace</h3>
-                <p className="text-gray-400 mb-6">Give your new project a name to get started.</p>
-                
-                <input
-                  type="text"
-                  placeholder="e.g. Marketing Campaign Q4"
-                  autoFocus
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                  className="w-full bg-dark-200 border border-white/10 rounded-xl px-4 py-3 text-white mb-6 focus:outline-none focus:border-accent-1 transition-colors"
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
-                />
-                
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setIsCreatingProject(false)}
-                    className="flex-1 py-3 rounded-xl font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCreateProject}
-                    className="flex-1 btn-clay rounded-xl"
-                  >
-                    Create Project
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12"
+        >
+          <StatCard
+            icon="📦"
+            label="Total Prompts"
+            value={stats.totalPrompts}
+            trend={`${projects.length} active projects`}
+            color="from-accent-1 to-purple-600"
+          />
+          <StatCard
+            icon="⚡"
+            label="Tokens Saved"
+            value={stats.tokensSaved.toLocaleString()}
+            trend="Estimated Usage"
+            color="from-accent-2 to-orange-500"
+          />
+          <StatCard
+            icon="✨"
+            label="Today's Optimizations"
+            value={stats.optimizationsToday}
+            trend="Keep going!"
+            color="from-accent-3 to-yellow-500"
+          />
+        </motion.div> */}
 
         {/* ============================================
-            MAIN GRID
+            MAIN CONTENT GRID
             ============================================ */}
-        <div className="grid lg:grid-cols-3 gap-8 items-start">
+        <div className="grid lg:grid-cols-3 gap-8">
           
-          {/* LEFT: Composer */}
+          {/* LEFT COLUMN - Quick Composer */}
           <div className="lg:col-span-2">
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" transition={{ delay: 0.1 }}>
-              <div className="glass rounded-glass p-1 border-t border-white/10 shadow-xl">
-                <div className="bg-dark-200/50 rounded-[14px] p-6 lg:p-8">
-                  {activeProject ? (
-                    <Composer 
-                      projectId={activeProject._id} 
-                      onSave={() => fetchPrompts(activeProject._id)} 
-                    />
-                  ) : (
-                    <div className="text-center py-10 text-gray-400">
-                      Please create or select a project to start composing.
-                    </div>
-                  )}
-                </div>
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              transition={{ delay: 0.2 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-display text-2xl font-bold text-white">
+                  Quick Composer
+                </h2>
+                {/* ✅ FIX: Use Link for internal navigation */}
+                <Link
+                  href="/vault"
+                  className="text-sm text-accent-1 hover:text-accent-2 font-medium transition-colors"
+                >
+                  View Vault →
+                </Link>
+              </div>
+
+              <div className="glass rounded-glass p-6 lg:p-8">
+                {activeProject ? (
+                  <Composer projectId={activeProject._id} compact={true} onSave={() => {/* Optional refresh */}} />
+                ) : (
+                  <div className="text-center py-10 text-gray-400">Select a project to start composing</div>
+                )}
               </div>
             </motion.div>
           </div>
 
-          {/* RIGHT: Recent Vault */}
+          {/* RIGHT COLUMN - Quick Actions */}
           <div className="lg:col-span-1">
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" transition={{ delay: 0.2 }}>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-display text-xl font-bold text-white">
-                  Recent Saves
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              transition={{ delay: 0.3 }}
+              className="space-y-6"
+            >
+              {/* Quick Actions Card */}
+              <div className="glass rounded-glass p-6">
+                <h3 className="font-display text-lg font-bold text-white mb-4">
+                  Quick Actions
                 </h3>
-                <a href="/vault" className="text-xs text-accent-1 hover:text-accent-2 transition-colors">
-                  View All
-                </a>
+                <div className="space-y-3">
+                  <QuickActionButton icon="🔍" label="Browse Vault" href="/vault" />
+                  <QuickActionButton icon="📚" label="Framework Guide" href="#frameworks" />
+                </div>
               </div>
 
-              <div className="space-y-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-2">
-                {promptsLoading ? (
-                   <div className="text-gray-500 text-sm text-center">Loading...</div>
-                ) : projectPrompts.length === 0 ? (
-                  <div className="text-center py-10 px-6 rounded-xl border border-dashed border-white/10">
-                    <span className="text-4xl block mb-3">📂</span>
-                    <p className="text-gray-500 text-sm">Your vault is empty.</p>
+              {/* Tips Card */}
+              <div className="glass rounded-glass p-6 border border-accent-1/20">
+                <div className="flex items-start space-x-3 mb-3">
+                  <span className="text-2xl">💡</span>
+                  <div>
+                    <h4 className="font-semibold text-white mb-1">Pro Tip</h4>
+                    <p className="text-sm text-gray-400 leading-relaxed">
+                      Use the <strong>WALT</strong> framework (Who, Action, Limitation, Tone) for the most precise results in GPT-4.
+                    </p>
                   </div>
-                ) : (
-                  projectPrompts.map((prompt) => (
-                    <VaultCard
-                      key={prompt._id}
-                      id={prompt._id}
-                      title={prompt.title}
-                      snippet={prompt.snippet}
-                      profession={prompt.profession}
-                      style={prompt.style}
-                      tags={prompt.tags}
-                      version={prompt.version}
-                      createdAt={prompt.createdAt}
-                    />
-                  ))
-                )}
+                </div>
               </div>
             </motion.div>
           </div>
         </div>
+
+        {/* ============================================
+            RECENT PROMPTS SECTION
+            ============================================ */}
+        <motion.div
+          id="vault"
+          variants={revealOnScroll}
+          initial="hidden"
+          whileInView="visible"
+          viewport={viewportOptions}
+          className="mt-16"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="font-display text-2xl font-bold text-white">
+              Recent Prompts
+            </h2>
+            <Link
+              href="/vault"
+              className="text-sm text-accent-1 hover:text-accent-2 font-medium transition-colors flex items-center space-x-1"
+            >
+              <span>View All</span>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+
+          {/* Loading State */}
+          {isLoadingPrompts && (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map(i => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!isLoadingPrompts && recentPrompts.length === 0 && (
+            <div className="glass rounded-glass p-12 text-center">
+              <div className="text-6xl mb-4">📦</div>
+              <h3 className="font-display text-xl font-bold text-white mb-2">
+                No Prompts Yet
+              </h3>
+              <p className="text-gray-400 mb-6">
+                Use the composer above to create and save your first optimized prompt.
+              </p>
+            </div>
+          )}
+
+          {/* Recent Prompts Grid */}
+          {!isLoadingPrompts && recentPrompts.length > 0 && (
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {recentPrompts.map((prompt) => (
+                <motion.div key={prompt._id} variants={staggerItem}>
+                  <VaultCard
+                    id={prompt._id}
+                    title={prompt.title}
+                    snippet={prompt.snippet}
+                    profession={prompt.profession}
+                    style={prompt.style}
+                    tags={prompt.tags}
+                    version={prompt.version}
+                    createdAt={prompt.createdAt}
+                    onClick={() => handleViewPrompt(prompt._id)}
+                  />
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </motion.div>
+
+        {/* ============================================
+            FRAMEWORKS SECTION
+            ============================================ */}
+        <motion.div
+          id="frameworks"
+          variants={revealOnScroll}
+          initial="hidden"
+          whileInView="visible"
+          viewport={viewportOptions}
+          className="mt-16"
+        >
+          <h2 className="font-display text-2xl font-bold text-white mb-6">
+            Framework Quick Reference
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <FrameworkCard name="WALT" description="Who, Action, Limitation, Tone" color="from-accent-1 to-purple-600" />
+            <FrameworkCard name="RACE" description="Role, Action, Context, Expectation" color="from-accent-2 to-orange-500" />
+            <FrameworkCard name="CCE" description="Context, Constraint, Example" color="from-accent-3 to-yellow-500" />
+            <FrameworkCard name="Custom" description="Free-form optimization" color="from-green-500 to-teal-500" />
+          </div>
+        </motion.div>
       </div>
+    </div>
+  );
+}
+
+// --- Sub Components (Keep in same file for simplicity) ---
+
+function StatCard({ icon, label, value, trend, color }) {
+  return (
+    <motion.div
+      variants={staggerItem}
+      className="glass rounded-glass p-6 hover:bg-glass-hover transition-all cursor-pointer group"
+      whileHover={{ y: -4 }}
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center text-2xl shadow-lg`}>
+          {icon}
+        </div>
+      </div>
+      <div className="text-3xl font-bold text-white mb-1">{value}</div>
+      <div className="text-sm text-gray-400 mb-2">{label}</div>
+      <div className="text-xs text-accent-1">{trend}</div>
+    </motion.div>
+  );
+}
+
+function QuickActionButton({ icon, label, href }) {
+  // Check if it is an anchor link (#) or a page route (/)
+  const isAnchor = href.startsWith('#');
+
+  // ✅ FIX 3: Conditionally render Link or a tag
+  if (isAnchor) {
+     return (
+      <a
+        href={href}
+        className="flex items-center space-x-3 p-3 rounded-xl glass border border-glass-border hover:border-accent-1/30 hover:bg-glass-hover transition-all group"
+      >
+        <span className="text-2xl">{icon}</span>
+        <span className="font-medium text-white group-hover:text-accent-1 transition-colors">{label}</span>
+      </a>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="flex items-center space-x-3 p-3 rounded-xl glass border border-glass-border hover:border-accent-1/30 hover:bg-glass-hover transition-all group"
+    >
+      <span className="text-2xl">{icon}</span>
+      <span className="font-medium text-white group-hover:text-accent-1 transition-colors">{label}</span>
+    </Link>
+  );
+}
+
+function FrameworkCard({ name, description, color }) {
+  return (
+    <motion.div
+      className="glass rounded-glass p-4 hover:bg-glass-hover transition-all group cursor-pointer"
+      whileHover={{ y: -4 }}
+    >
+      <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center mb-3`}>
+        <span className="text-white font-bold text-sm">{name[0]}</span>
+      </div>
+      <h4 className="font-display font-bold text-white mb-1">{name}</h4>
+      <p className="text-xs text-gray-400">{description}</p>
+    </motion.div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="glass rounded-glass p-6 animate-pulse">
+      <div className="w-8 h-8 bg-gray-700 rounded mb-3" />
+      <div className="h-5 bg-gray-700 rounded w-3/4 mb-2" />
+      <div className="h-4 bg-gray-700 rounded w-full mb-4" />
     </div>
   );
 }

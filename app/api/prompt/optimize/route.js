@@ -105,7 +105,7 @@ export async function POST(request) {
 
     const lines = optimizedResult.split("\n");
     const title = lines[0];
-    const tagsLine = optimizedResult.match(/#\w+/g);
+    const tagsLine = optimizedResult.match(/#\w+/g).map(tag => tag.replace("#", ""));
     const optimizedPromptBody = lines
       .slice(1, -1) // remove first and last line
       .filter((line) => !line.startsWith("[")) // exclude tag lines
@@ -113,7 +113,7 @@ export async function POST(request) {
 
     // 3. Usage Stats
     const tokens = Math.ceil(
-      (systemInstruction.length + prompt.length + optimizedResult.length) / 4
+      (systemInstruction.length + prompt.length + optimizedPromptBody.length) / 4
     );
     const costUsd = tokens * 0.0000005; // Simplified calc
 
@@ -121,7 +121,7 @@ export async function POST(request) {
     const newPrompt = await Prompt.create({
       title: title || "Untitled Prompt",
       originalPrompt: prompt,
-      optimizedPrompt: `[${style.toUpperCase()}] ` + optimizedPromptBody.trim(),
+      optimizedPrompt: optimizedPromptBody.trim(),
       snippet: optimizedPromptBody.substring(0, 150) + "...",
       profession,
       style,

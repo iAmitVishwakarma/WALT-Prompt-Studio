@@ -25,7 +25,7 @@ export async function POST(request) {
     await user.save();
 
     // 3. "Send" Email (Mocking for MVP)
-    const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}`;
+    const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${resetToken}`;
     
     console.log("========================================");
     console.log("📧 MOCK EMAIL SERVICE");

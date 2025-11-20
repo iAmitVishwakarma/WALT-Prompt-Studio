@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
         </div>
         <h2 className="text-2xl font-bold text-white mb-2">Check your terminal/email</h2>
         <p className="text-gray-400 mb-6">We've sent a password reset link to <strong>{email}</strong>.</p>
-        <Link href="/auth/login" className="btn-clay w-full block text-center py-3">
+        <Link href="/login" className="btn-clay w-full block text-center py-3">
             Back to Login
         </Link>
       </div>
@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="glass p-8 rounded-2xl border border-white/10 shadow-2xl">
-      <Link href="/auth/login" className="flex items-center text-gray-400 hover:text-white mb-6 text-sm transition-colors">
+      <Link href="/login" className="flex items-center text-gray-400 hover:text-white mb-6 text-sm transition-colors">
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to Login
       </Link>
       

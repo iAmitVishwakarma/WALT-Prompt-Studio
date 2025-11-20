@@ -17,6 +17,8 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { lift } from '../motion/variants';
+import Link from 'next/link';
+
 
 export default function VaultCard({ 
   id,
@@ -183,7 +185,7 @@ export default function VaultCard({
             initial={{ x: -10 }}
             whileHover={{ x: 0 }}
           >
-            <span>View details</span>
+            <Link href={`/vault/${id}`}>View details</Link>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>

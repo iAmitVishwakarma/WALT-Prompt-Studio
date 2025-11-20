@@ -4,8 +4,9 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation'; // Import usePathname
 import { motion, AnimatePresence } from 'framer-motion';
-import { slideInRight, fadeIn } from './motion/variants';
+import { slideInRight, fadeIn, heroReveal } from './motion/variants';
 import Link from 'next/link';
+import { Router } from 'next/router';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,7 +14,8 @@ export default function Navbar() {
   const pathname = usePathname(); // Get current path
 
   // Check if we are on the dashboard
-  const isDashboard = pathname?.startsWith('/dashboard');
+const islandingPage = pathname.trim() === '/';
+const isAuthPages = pathname.trim() === '/login' || pathname.trim() === '/register' || pathname.trim() === '/forgot-password' || pathname.trim() === '/reset-password';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -33,7 +35,7 @@ export default function Navbar() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6 }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isDashboard
+          !islandingPage
             ? 'bg-dark-200 border-b border-glass-border' // Solid background for Dashboard
             : isScrolled 
               ? 'bg-glass-bg backdrop-blur-glass border-b border-glass-border shadow-lg' 
@@ -44,7 +46,7 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-16 md:h-20">
             
             {/* Logo */}
-            <Link href="#home" className="flex items-center space-x-2 group">
+            <Link href="/" className="flex items-center space-x-2 group">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-1 to-accent-2 flex items-center justify-center shadow-glow-indigo">
                 <span className="text-white font-bold text-xl">W</span>
               </div>
@@ -55,26 +57,35 @@ export default function Navbar() {
 
             {/* Desktop Nav */}
       
-              {!isDashboard ? (<>
-      
-                <div className="hidden md:flex items-center space-x-6 ">
-            <MainLinks link="features" />
-            <MainLinks link="pricing" />
-            <MainLinks link="blog" />
+              {islandingPage ? (
+                <>
+    
+                <div className="hidden md:flex items-center space-x-16 ">
+                  <NavLink href="/#features">Features</NavLink>
+                <NavLink href="/#pricing">Pricing</NavLink>
+            <NavLink href="/#blog">Blog</NavLink>
                 </div>
-        </>
+                <Link href="/dashboard" className="hidden md:inline-flex items-center px-7 py-2  bg-gradient-to-br from-accent-2/20 to-accent-3/40  text-white hover:rounded-xl rounded-full hover:bg-black/50 transition-colors shadow-glow-indigo font-medium">
+                  Go to Dashboard
+                </Link>
+                 </>
               ) : (
-                // Dashboard-specific links
+            // Dashboard-specific links
             <>
-              <div className="hidden md:flex items-center space-x-6 ">
-            <MainLinks link="Overview" />
-            <MainLinks link="Projects" />
-            <MainLinks link="Vault" />
+            {!isAuthPages ? (
+           <>
+              <div className="hidden md:flex items-center space-x-16 ">
+                <NavLink href="/dashboard">Dashboard</NavLink>
+              <NavLink href="/projects">Projects</NavLink>
+              <NavLink href="/vault">Vault</NavLink>
             </div>
-
+            <Link href="/profile" className="hidden md:inline-flex items-center px-7 py-2  bg-gradient-to-br from-accent-2/20 to-accent-3/40  text-white hover:rounded-xl rounded-full hover:bg-black/50 transition-colors shadow-glow-indigo font-medium">
+                  Profile
+                </Link>
+            </> ) : <> </>
+              }
             </>
-              )}
-        
+         )}
 
             {/* Mobile Menu Button */}
             <button onClick={toggleMenu} className="md:hidden relative w-10 h-10 flex flex-col items-center justify-center space-y-1.5 focus:outline-none">
@@ -121,16 +132,24 @@ export default function Navbar() {
 
 
 
-const MainLinks = ({link})=> (
-  <>
-    <NavLink className='capitalize' href={`/#${link}`}>{link}</NavLink>
-  </>
-);
+// const MainLinks = ({link})=> (
+//   <>
+//     <NavLink className='capitalize' href={`/#${link}`}>{link}</NavLink>
+//   </>
+// );
+
+
 
 function NavLink({ href, children }) {
   return (
-    <a href={href} className="text-gray-300 hover:text-white font-medium transition-colors">
+    <Link
+      href={href}
+      className={`text-gray-300 hover:text-white font-medium transition-colors ${
+        Router.pathname === href ? 'active' : ''
+      }`}
+    >
       {children}
-    </a>
+    </Link>
+
   );
 }

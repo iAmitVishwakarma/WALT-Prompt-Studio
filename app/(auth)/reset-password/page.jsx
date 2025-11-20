@@ -30,7 +30,7 @@ function ResetPasswordForm() {
 
       if (res.ok) {
         toast.success("Password reset successfully!");
-        router.push('/auth/login');
+        router.push('/login');
       } else {
         toast.error(data.error || "Failed to reset");
       }
